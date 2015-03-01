@@ -15,8 +15,9 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Data.ByteString.Read
-  build-depends:       base       >=4.6  && <4.8
-                     , bytestring >=0.10 && <0.11
+  build-depends:       base         >=4.6  && <4.8
+                     , bytestring   >=0.10 && <0.11
+                     , types-compat >=0.1  && <0.2
   hs-source-dirs:      src
   ghc-options:         -Wall -O2
   default-language:    Haskell2010

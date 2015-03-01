@@ -24,12 +24,13 @@ module Data.ByteString.Read
 import Control.Arrow(first)
 import Control.Applicative((<$>))
 
+import Data.ByteString.Unsafe
 import Data.ByteString(ByteString)
 import qualified Data.ByteString as S
 import Data.Word
-import GHC.TypeLits
-import Data.Proxy
-import Data.ByteString.Unsafe
+
+import GHC.TypeLits.Compat
+import Data.Proxy.Compat
 
 minus :: Word8
 minus = 45
