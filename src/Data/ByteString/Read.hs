@@ -123,21 +123,21 @@ integral pn = loop 0 0 0
 {-# INLINABLE integral #-}
 
 toFractional :: (Base b, EffectiveDigit r, Fractional r)
-             => proxy b -> FractionWord r -> FractionWord r -> Int -> r
-toFractional p q r d = unFractionWord q + unFractionWord r / exp_
+             => proxy b -> FractionWord r -> FractionWord r -> Int -> Int -> r
+toFractional p q r du d = unFractionWord q * base ^ du + unFractionWord r / base ^ d
   where
-    exp_ = fromIntegral (natVal p) ^ d
+    base = fromIntegral (natVal p)
 {-# INLINABLE toFractional #-}
 
 floating' :: (Base b, ReadFloating r) => proxy b -> ByteString -> Maybe (r, ByteString)
 floating' pn s = case integral pn s of
     (_, 0, _,   _) -> Nothing
     (q, d, ad, "") -> Just (unFractionWord q * fromIntegral (natVal pn) ^ (ad - d), "")
-    (q, _, _,  s1)
+    (q, d, ad, s1)
         | unsafeHead s1 /= dot -> Just (unFractionWord q, s1)
         | otherwise -> case integral pn (unsafeTail s1) of
-            (_, 0, _, _)  -> Just (unFractionWord q, s1)
-            (r, d, _, s2) -> Just (toFractional pn q r d, s2)
+            (_, 0,  _, _)  -> Just (unFractionWord q, s1)
+            (r, d', _, s2) -> Just (toFractional pn q r (ad - d) d', s2)
   where
     dot = 46
 {-# INLINABLE floating' #-}
