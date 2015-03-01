@@ -125,7 +125,7 @@ integral pn = loop 0 0 0
         | i >= maxValue pr                = loop i d (ad + 1) (unsafeTail s)
         | otherwise                       = loop
             (i * fromIntegral (natVal pn) + (fromIntegral $ unsafeToDigit pn (unsafeHead s) :: FractionWord r))
-            (d+1) (ad + 1) (unsafeTail s)
+            (d+1) ad (unsafeTail s)
 {-# INLINABLE integral #-}
 
 toFractional :: (Base b, EffectiveDigit r, Fractional r)
@@ -141,12 +141,12 @@ toFractional p q r du d = unFractionWord q * base ^ du + unFractionWord r / base
 floating' :: (Base b, EffectiveDigit r) => proxy b -> ByteString -> Maybe (r, ByteString)
 floating' pn s = case integral pn s of
     (_, 0, _,   _) -> Nothing
-    (q, d, ad, "") -> Just (unFractionWord q * fromIntegral (natVal pn) ^ (ad - d), "")
-    (q, d, ad, s1)
+    (q, _, d, "") -> Just (unFractionWord q * fromIntegral (natVal pn) ^ d, "")
+    (q, _, d, s1)
         | unsafeHead s1 /= dot -> Just (unFractionWord q, s1)
         | otherwise -> case integral pn (unsafeTail s1) of
             (_, 0,  _, _)  -> Just (unFractionWord q, s1)
-            (r, d', _, s2) -> Just (toFractional pn q r (ad - d) d', s2)
+            (r, d', _, s2) -> Just (toFractional pn q r d d', s2)
   where
     dot = 46
 {-# INLINABLE floating' #-}
