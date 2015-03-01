@@ -14,22 +14,22 @@ import Test.Tasty.QuickCheck
 main :: IO ()
 main = defaultMain $ testGroup "read . show == id"
     [ testProperty "showEFloat" $ \d ->
-        let Just (d', "") = signed readFloating . S.pack $ showEFloat Nothing d ""
+        let Just (d', "") = signed floating . S.pack $ showEFloat Nothing d ""
         in (d :: Double) =~~ d'
 
     , testProperty "showFFloat" $ \d ->
-        let Just (d', "") = signed readFloating . S.pack $ showFFloat Nothing  d ""
+        let Just (d', "") = signed floating . S.pack $ showFFloat Nothing  d ""
         in (d :: Double) =~~ d'
 
     , testProperty "showGFloat" $ \d ->
-        let Just (d', "") = signed readFloating . S.pack $ showGFloat Nothing  d ""
+        let Just (d', "") = signed floating . S.pack $ showGFloat Nothing  d ""
         in (d :: Double) =~~ d'
 
     , testProperty "showHex" $ \i ->
-        let Just (i', "") = signed readFloating . (S.append "0x") . S.pack $ showHex (abs i) ""
+        let Just (i', "") = signed floating . (S.append "0x") . S.pack $ showHex (abs i) ""
         in fromIntegral (abs i :: Int) =~~ i'
 
     , testProperty "showOct" $ \i ->
-        let Just (i', "") = signed readFloating . (S.append "0o") . S.pack $ showOct (abs i) ""
+        let Just (i', "") = signed floating . (S.append "0o") . S.pack $ showOct (abs i) ""
         in fromIntegral (abs i :: Int) =~~ i'
      ]

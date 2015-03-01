@@ -1,161 +1,204 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE UnboxedTuples #-}
-{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
 
-module Data.ByteString.Read (signed, readFloating) where
+module Data.ByteString.Read
+    ( -- * classes
+      EffectiveDigit(..)
+    , Base(..)
+      -- * types
+    , ReadFloating
+     
+     -- * functions
+    , floating
+    , floating10
+    , floating'
+    , signed
+    ) where
 
-import Control.Applicative
 import Control.Arrow(first)
-import qualified Data.ByteString as S
+import Control.Applicative((<$>))
+
 import Data.ByteString(ByteString)
+import qualified Data.ByteString as S
+import Data.Word
+import GHC.TypeLits
+import Data.Proxy
 import Data.ByteString.Unsafe
-import Foreign.C
-import Foreign.Ptr
-import Foreign.Storable
-import GHC.Base
 
-isNum8 :: CChar -> Bool
-isNum8 i = 47 < i && i <= 55
-{-# INLINE isNum8 #-}
+minus :: Word8
+minus = 45
+{-# INLINE minus #-}
 
-toNum8 :: CChar -> Int
-toNum8 i = fromEnum i - 48
-{-# INLINE toNum8 #-}
+plus :: Word8
+plus = 43
+{-# INLINE plus #-}
 
-isNum10 :: CChar -> Bool
-isNum10 i = 47 < i && i <= 57
-{-# INLINE isNum10 #-}
 
-toNum10 :: CChar -> Int
-toNum10 i = fromEnum i - 48
-{-# INLINE toNum10 #-}
+class EffectiveDigit a where
+    data FractionWord a
 
-isNum16 :: CChar -> Bool
-isNum16 i = 47 < i && i <= 57 || 65 <= i && i <= 70 || 97 <= i && i <= 102
-{-# INLINE isNum16 #-}
+    maxValue :: proxy a -> FractionWord a
 
-toNum16 :: CChar -> Int
-toNum16 i
-    | 47 < i  && i <= 57 = fromEnum i - 48
-    | 65 <= i && i <= 70 = fromEnum i - 55
-    | otherwise          = fromEnum i - 87
-{-# INLINE toNum16 #-}
+    unFractionWord :: FractionWord a -> a
+    fractionWordAsInt :: FractionWord a -> Int
 
-dot :: CChar
-dot = 46
-{-# INLINE dot #-}
+instance EffectiveDigit Float where
+    newtype FractionWord Float = WordFloat Word32
+        deriving(Show, Eq, Ord, Num)
 
-isE :: CChar -> Bool
-isE i = i == 101 || i == 69
-{-# INLINE isE #-}
+    maxValue _ = let t = 0 :: Float in fromIntegral (floatRadix t) ^ floatDigits t
 
-isO :: CChar -> Bool
-isO i = i == 111 || i == 79
-{-# INLINE isO #-}
+    unFractionWord (WordFloat a) = fromIntegral a
+    fractionWordAsInt (WordFloat a) = fromIntegral a
 
-isX :: CChar -> Bool
-isX i = i == 120 || i == 88
-{-# INLINE isX #-}
+    {-# INLINE maxValue #-}
+    {-# INLINE unFractionWord #-}
+    {-# INLINE fractionWordAsInt #-}
 
-isZero :: CChar -> Bool
-isZero = (== 48)
-{-# INLINE isZero #-}
+instance EffectiveDigit Double where
+    newtype FractionWord Double = WordDouble Word64
+        deriving(Show, Eq, Ord, Num)
 
-toDouble :: Fractional a => Int -> Int -> Int -> a
-toDouble base e f = fromIntegral f / (fromIntegral base ^ e)
-{-# INLINE toDouble #-}
+    maxValue _ = let t = 0 :: Double in fromIntegral (floatRadix t) ^ floatDigits t
 
-toDoubleN :: Floating a => Int -> Int -> Int -> a
-toDoubleN base e f
-    | e >= 0    = toDouble base e f
-    | otherwise = fromIntegral f / (fromIntegral base ** fromIntegral e)
-{-# INLINE toDoubleN #-}
+    unFractionWord (WordDouble a) = fromIntegral a
+    fractionWordAsInt (WordDouble a) = fromIntegral a
 
-readInt' :: (CChar -> Bool) -> (CChar -> Int) -> Int -> Int -> CStringLen -> IO (Maybe (Int, Int, CStringLen))
-readInt' _     _     _    _  (_,     0)    = return Nothing
-readInt' isNum toNum base i0 (cstr0, len0) = peek cstr0 >>= \case
-    c0 | isNum c0  -> loop i0 0 (plusPtr cstr0 1) (len0 - 1) c0
-       | otherwise -> return Nothing
+    {-# INLINE maxValue #-}
+    {-# INLINE unFractionWord #-}
+    {-# INLINE fractionWordAsInt #-}
+
+class KnownNat n => Base n where
+    isDigit :: proxy n -> Word8 -> Bool
+    unsafeToDigit :: proxy n -> Word8 -> Word8
+
+instance Base 8 where
+    isDigit _ = \w -> 48 <= w && w <= 55
+    unsafeToDigit _ w = w - 48
+    {-# INLINE isDigit #-}
+    {-# INLINE unsafeToDigit #-}
+
+instance Base 10 where
+    isDigit _ = \w -> 48 <= w && w <= 57
+    unsafeToDigit _ w = w - 48
+    {-# INLINE isDigit #-}
+    {-# INLINE unsafeToDigit #-}
+
+instance Base 16 where
+    isDigit _ = \w -> 48 <= w && w <= 57 || 65 <= w && w <= 70 || 97 <= w && w <= 102
+    unsafeToDigit _ w
+        | 48 <= w && w <= 57 = fromIntegral w - 48
+        | 65 <= w && w <= 70 = fromIntegral w - 55
+        | otherwise          = fromIntegral w - 87
+    {-# INLINE isDigit #-}
+    {-# INLINE unsafeToDigit #-}
+
+type ReadFloating r = (EffectiveDigit r, Ord (FractionWord r), Num (FractionWord r), Fractional r)
+
+integral :: forall proxy n r. (Base n, EffectiveDigit r, Ord (FractionWord r), Num (FractionWord r))
+         => proxy n -> ByteString -> (FractionWord r, Int, Int, ByteString)
+integral pn = loop 0 0 0
   where
-    loop !i !e cstr 0   c
-        | isNum c   = return $ Just (i * base + toNum c, e + 1, (nullPtr, 0))
-        | otherwise = return $ Just (i, e, (plusPtr cstr (-1), 1))
-    loop !i !e cstr len c
-        | isNum c   = peek cstr >>= loop (i * base + toNum c) (e + 1) (plusPtr cstr 1) (len - 1)
-        | otherwise = return $ Just (i, e, (plusPtr cstr (-1), len + 1))
+    pr :: Proxy r
+    pr = Proxy
 
-readFractional' :: (CChar -> Bool) -> (CChar -> Int) -> Int -> CStringLen -> IO (Maybe (Int, Int, CStringLen))
-readFractional' isNum toNum base cstrLen0 = readI 0 cstrLen0 >>= \case
-    Nothing -> return Nothing
-    Just (i, _, (_, 0)) -> return $ Just (0, i, (nullPtr, 0))
-    Just (i, _, csl@(cstr, len)) -> peek cstr >>= \case
-        c | c == dot -> readI i (plusPtr cstr 1, len - 1) >>= \case
-            Nothing -> return $ Just (0, i, csl)
-            Just (f, e, csl') -> return $ Just (e, f, csl')
-          | otherwise -> return $ Just (0, i, csl)
+    loop !i !d !ad !s
+        | S.null s                        = (i, d, ad, s)
+        | not (isDigit pn (unsafeHead s)) = (i, d, ad, s)
+        | i >= maxValue pr                = loop i d (ad + 1) (unsafeTail s)
+        | otherwise                       = loop
+            (i * fromIntegral (natVal pn) + (fromIntegral $ unsafeToDigit pn (unsafeHead s) :: FractionWord r))
+            (d+1) (ad + 1) (unsafeTail s)
+{-# INLINABLE integral #-}
+
+toFractional :: (Base b, EffectiveDigit r, Fractional r)
+             => proxy b -> FractionWord r -> FractionWord r -> Int -> r
+toFractional p q r d = unFractionWord q + unFractionWord r / exp_
   where
-    readI = readInt' isNum toNum base
+    exp_ = fromIntegral (natVal p) ^ d
+{-# INLINABLE toFractional #-}
 
-readFloating10 :: Floating n => CStringLen -> IO (Maybe (n, CStringLen))
-readFloating10 cstrLn0 = readFractional' isNum10 toNum10 10 cstrLn0 >>= \case
-    Nothing -> return Nothing
-    Just (e, f, csl@(cstr, len))
-        | len < 2   -> return $ Just (toDouble 10 e f, csl)
-        | otherwise -> do
-            h <- peek cstr
-            if isE h
-                then do
-                    (e', csl') <- exponential e (plusPtr cstr 1, len - 1)
-                    return $ Just (toDoubleN 10 e' f, csl')
-                else return $ Just (toDouble 10 e f, csl)
-{-# SPECIALIZE readFloating10 :: CStringLen -> IO (Maybe (Double, CStringLen)) #-}
-{-# SPECIALIZE readFloating10 :: CStringLen -> IO (Maybe (Float,  CStringLen)) #-}
-
-exponential :: Int -> CStringLen -> IO (Int, CStringLen)
-exponential e (cstr0, len0) = peek cstr0 >>= \case
-    c | isNum10 c -> expNum cstr0 len0 >>= \case
-        Nothing        -> return (e, (cstr0, len0))
-        Just (e', csl) -> return (e - e', csl)
-      | c == 43 || c == 45 -> expNum (plusPtr cstr0 1) (len0 - 1) >>= \case
-        Nothing        -> return (e, (cstr0, len0))
-        Just (e', csl) -> return (if c == 43 then e - e' else e + e', csl)
-      | otherwise -> return (e, (cstr0, len0))
+floating' :: (Base b, ReadFloating r) => proxy b -> ByteString -> Maybe (r, ByteString)
+floating' pn s = case integral pn s of
+    (_, 0, _,   _) -> Nothing
+    (q, d, ad, "") -> Just (unFractionWord q * fromIntegral (natVal pn) ^ (ad - d), "")
+    (q, _, _,  s1)
+        | unsafeHead s1 /= dot -> Just (unFractionWord q, s1)
+        | otherwise -> case integral pn (unsafeTail s1) of
+            (_, 0, _, _)  -> Just (unFractionWord q, s1)
+            (r, d, _, s2) -> Just (toFractional pn q r d, s2)
   where
-    expNum cstr len = readInt' isNum10 toNum10 10 0 (cstr, len) >>= \case
-        Nothing           -> return Nothing
-        Just (e', _, csl) -> return $ Just (e', csl)
+    dot = 46
+{-# INLINABLE floating' #-}
 
-readFloating' :: Floating n => CStringLen -> IO (Maybe (n, CStringLen))
-readFloating' (cstr, len)
-    | len >= 2 = peek cstr >>= \case
-        z | isZero z -> peek (plusPtr cstr 1 :: Ptr CChar) >>= \case
-            i | isO i -> fmap (\(e,f,c) -> (toDouble  8 e f, c)) <$> readFractional' isNum8  toNum8   8 (plusPtr cstr 2, len - 2)
-              | isX i -> fmap (\(e,f,c) -> (toDouble 16 e f, c)) <$> readFractional' isNum16 toNum16 16 (plusPtr cstr 2, len - 2)
-              | otherwise -> readFloating10 (cstr, len)
-          | otherwise -> readFloating10 (cstr, len)
-    | otherwise = readFloating10 (cstr, len)
-{-# SPECIALIZE readFloating' :: CStringLen -> IO (Maybe (Double, CStringLen)) #-}
-{-# SPECIALIZE readFloating' :: CStringLen -> IO (Maybe (Float, CStringLen)) #-}
-
-readFloating :: Floating n => ByteString -> Maybe (n, ByteString)
-readFloating s = inlinePerformIO $ fmap conv <$> unsafeUseAsCStringLen s readFloating'
+exponential :: forall proxy r. (EffectiveDigit r, Ord (FractionWord r), Num (FractionWord r))
+            => proxy r -> ByteString -> (Int, ByteString)
+exponential _ s0
+    | S.null s0           = (0, s0)
+    | isE (unsafeHead s0) = sign (unsafeTail s0)
+    | otherwise           = (0, s0)
   where
-    conv (n, (_,len)) = (n, unsafeDrop (S.length s - len) s)
-{-# SPECIALIZE readFloating :: ByteString -> Maybe (Double, ByteString) #-}
-{-# SPECIALIZE readFloating :: ByteString -> Maybe (Float, ByteString) #-}
+    isE w = w == 101 || w == 69
 
-signed :: Num a => (ByteString -> Maybe (a, ByteString)) -> ByteString -> Maybe (a, ByteString)
-signed f = \s -> case S.uncons s of
-    Nothing -> Nothing
-    Just (43, s') -> f s'
-    Just (45, s') -> first negate <$> f s'
-    _            -> f s
-{-# SPECIALIZE signed :: (ByteString -> Maybe (Double, ByteString)) -> ByteString -> Maybe (Double, ByteString) #-}
-{-# SPECIALIZE signed :: (ByteString -> Maybe (Float, ByteString)) -> ByteString -> Maybe (Float, ByteString) #-}
+    sign s1
+        | S.null s1              = (0, s0)
+        | unsafeHead s1 == plus  = expPart $ unsafeTail s1
+        | unsafeHead s1 == minus = let (e, s) = expPart $ unsafeTail s1 in (-e, s)
+        | otherwise              = expPart s1
 
-inlinePerformIO :: IO a -> a
-inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
-{-# INLINE inlinePerformIO #-}
+    expPart s2 = case integral (Proxy :: Proxy 10) s2 :: (FractionWord r, Int, Int, ByteString) of
+        (_, 0, _, _) -> (0, s0)
+        (e, _, _, s) -> (fractionWordAsInt e, s)
+{-# INLINABLE exponential #-}
+
+setExpPart :: Fractional f => Int -> f -> f
+setExpPart e f
+    | e >= 0    = f * 10 ^ e
+    | otherwise = f / 10 ^ abs e
+{-# SPECIALIZE setExpPart :: Int -> Double -> Double #-}
+{-# SPECIALIZE setExpPart :: Int -> Float -> Float #-}
+{-# INLINABLE setExpPart #-}
+
+floating10 :: forall r. ReadFloating r => ByteString -> Maybe (r, ByteString)
+floating10 s = floating' (Proxy :: Proxy 10) s >>= \(f, s') ->
+    let (e, s'') = exponential p s'
+    in Just (setExpPart e f, s'')
+  where
+    p :: Proxy r
+    p = Proxy
+{-# INLINABLE floating10 #-}
+
+floating :: ReadFloating r => ByteString -> Maybe (r, ByteString)
+floating s0
+    | S.null s0             = Nothing
+    | unsafeHead s0 == zero = base $ unsafeTail s0
+    | otherwise             = floating10 s0
+  where
+    zero  = 48
+    isX w = w == 120 || w == 88
+    isO w = w == 111 || w == 79
+
+    base s1
+        | S.null s1           = Just (0, "")
+        | isX (unsafeHead s1) = floating' (Proxy :: Proxy 16) (unsafeTail s1)
+        | isO (unsafeHead s1) = floating' (Proxy :: Proxy 8)  (unsafeTail s1)
+        | otherwise           = floating10 s0
+{-# INLINABLE floating #-}
+
+signed :: Num r => (ByteString -> Maybe (r, ByteString)) -> ByteString -> Maybe (r, ByteString)
+signed f s
+    | S.null s = Nothing
+    | unsafeHead s == minus = first negate <$> f (unsafeTail s)
+    | unsafeHead s == plus  = f (unsafeTail s)
+    | otherwise = f s
