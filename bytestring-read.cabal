@@ -1,6 +1,6 @@
 name:                bytestring-read
 version:             0.1.0
--- synopsis:            
+synopsis:            fast read function bytestring to floating.
 -- description:         
 license:             MIT
 license-file:        LICENSE

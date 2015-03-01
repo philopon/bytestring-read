@@ -1,13 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
@@ -16,14 +11,14 @@ module Data.ByteString.Read
     ( -- * classes
       EffectiveDigit(..)
     , Base(..)
-      -- * types
-    , ReadFloating
      
      -- * functions
     , floating
+    , signed
+
+     -- ** raw functions
     , floating10
     , floating'
-    , signed
     ) where
 
 import Control.Arrow(first)
@@ -45,17 +40,26 @@ plus = 43
 {-# INLINE plus #-}
 
 
-class EffectiveDigit a where
+class (Fractional a, Num (FractionWord a), Ord (FractionWord a)) => EffectiveDigit a where
+    -- | data type to store fractional part of floating
     data FractionWord a
 
+    -- | maximum value of fractional part.
+    -- 
+    -- @
+    -- fromIntegral (floatRadix t) ^ floatDigits t
+    -- @
     maxValue :: proxy a -> FractionWord a
 
+    -- | unwrap to floating
     unFractionWord :: FractionWord a -> a
+
+    -- | unwrap to word
     fractionWordAsInt :: FractionWord a -> Int
 
 instance EffectiveDigit Float where
     newtype FractionWord Float = WordFloat Word32
-        deriving(Show, Eq, Ord, Num)
+        deriving(Eq, Ord, Num)
 
     maxValue _ = let t = 0 :: Float in fromIntegral (floatRadix t) ^ floatDigits t
 
@@ -68,7 +72,7 @@ instance EffectiveDigit Float where
 
 instance EffectiveDigit Double where
     newtype FractionWord Double = WordDouble Word64
-        deriving(Show, Eq, Ord, Num)
+        deriving(Eq, Ord, Num)
 
     maxValue _ = let t = 0 :: Double in fromIntegral (floatRadix t) ^ floatDigits t
 
@@ -80,7 +84,11 @@ instance EffectiveDigit Double where
     {-# INLINE fractionWordAsInt #-}
 
 class KnownNat n => Base n where
+    -- | check input Word8 is digit charactor or not.
     isDigit :: proxy n -> Word8 -> Bool
+
+    -- | convert digit charactor to number.
+    -- undefined behaviour when give non-digit charactor.
     unsafeToDigit :: proxy n -> Word8 -> Word8
 
 instance Base 8 where
@@ -103,8 +111,6 @@ instance Base 16 where
         | otherwise          = fromIntegral w - 87
     {-# INLINE isDigit #-}
     {-# INLINE unsafeToDigit #-}
-
-type ReadFloating r = (EffectiveDigit r, Ord (FractionWord r), Num (FractionWord r), Fractional r)
 
 integral :: forall proxy n r. (Base n, EffectiveDigit r, Ord (FractionWord r), Num (FractionWord r))
          => proxy n -> ByteString -> (FractionWord r, Int, Int, ByteString)
@@ -129,7 +135,10 @@ toFractional p q r du d = unFractionWord q * base ^ du + unFractionWord r / base
     base = fromIntegral (natVal p)
 {-# INLINABLE toFractional #-}
 
-floating' :: (Base b, ReadFloating r) => proxy b -> ByteString -> Maybe (r, ByteString)
+-- | convert unsigned float bytestring to floating by provided base.
+--
+-- this function cannot parse exponential notation, use floating10.
+floating' :: (Base b, EffectiveDigit r) => proxy b -> ByteString -> Maybe (r, ByteString)
 floating' pn s = case integral pn s of
     (_, 0, _,   _) -> Nothing
     (q, d, ad, "") -> Just (unFractionWord q * fromIntegral (natVal pn) ^ (ad - d), "")
@@ -170,16 +179,22 @@ setExpPart e f
 {-# SPECIALIZE setExpPart :: Int -> Float -> Float #-}
 {-# INLINABLE setExpPart #-}
 
-floating10 :: forall r. ReadFloating r => ByteString -> Maybe (r, ByteString)
+-- | convert unsigned float bytestring to floating.
+--
+-- base restricted 10 and can parse exponential notation.
+floating10 :: forall r. EffectiveDigit r => ByteString -> Maybe (r, ByteString)
 floating10 s = floating' (Proxy :: Proxy 10) s >>= \(f, s') ->
-    let (e, s'') = exponential p s'
+    let (e, s'') = exponential (Proxy :: Proxy r) s'
     in Just (setExpPart e f, s'')
-  where
-    p :: Proxy r
-    p = Proxy
 {-# INLINABLE floating10 #-}
 
-floating :: ReadFloating r => ByteString -> Maybe (r, ByteString)
+-- | convert unsigned float bytestring to floating.
+--
+-- this function can parse
+--
+-- * oct/hexa-decimal literal (0o,0O,0x,0X)
+-- * exponential notation (1.0e1, 1.0E+2, 1.0e-2)
+floating :: EffectiveDigit r => ByteString -> Maybe (r, ByteString)
 floating s0
     | S.null s0             = Nothing
     | unsafeHead s0 == zero = base $ unsafeTail s0
@@ -196,6 +211,7 @@ floating s0
         | otherwise           = floating10 s0
 {-# INLINABLE floating #-}
 
+-- | convert unsigned parser to signed parser.
 signed :: Num r => (ByteString -> Maybe (r, ByteString)) -> ByteString -> Maybe (r, ByteString)
 signed f s
     | S.null s = Nothing
