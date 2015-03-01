@@ -7,7 +7,7 @@ import Test.Tasty
 import Test.Tasty.QuickCheck
 
 (=~~) :: Double -> Double -> Bool
-(=~~) a b = a == b || abs (a / b) - 1 < 1e20
+(=~~) a b = a == b || abs (a - b) <= max (abs a) (abs b) * 1e20
 
 -- Word
 
@@ -76,6 +76,16 @@ instance Arbitrary Float10 where
         Word10 r <- arbitrary
         return . Float10 $ q ++ '.': r
 
+newtype SmallFloat10 = SmallFloat10 String
+    deriving Show
+
+instance Arbitrary SmallFloat10 where
+    arbitrary = do
+        sign <- oneof $ map return ["", "-"]
+        i <- choose (0, 100)
+        Word10 r <- arbitrary
+        return . SmallFloat10 $ sign ++ "0." ++ replicate i '0' ++ r
+
 newtype Float10Exp = Float10Exp String
     deriving Show
 
@@ -134,6 +144,10 @@ main = defaultMain $ testGroup "read . show == id"
         in d' =~~ (read d :: Double)
 
     , testProperty "Float10" $ \(Float10 d) ->
+        let Just (d', "") = signed floating (S.pack d)
+        in d' =~~ (read d :: Double)
+
+    , testProperty "SmallFloat10" $ \(SmallFloat10 d) ->
         let Just (d', "") = signed floating (S.pack d)
         in d' =~~ (read d :: Double)
 
