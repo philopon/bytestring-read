@@ -1,6 +1,6 @@
 name:                bytestring-read
 version:             0.1.0
-synopsis:            fast ByteString to Double convert library
+synopsis:            fast ByteString to Double converting library
 description:         benchmark: <http://philopon.github.io/bytestring-read/bench.html>
 license:             MIT
 license-file:        LICENSE

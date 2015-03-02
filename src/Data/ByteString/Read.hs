@@ -5,7 +5,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE CPP #-}
 
@@ -123,10 +122,11 @@ instance Base BASE where;\
     {-# INLINE isDigit #-};\
     {-# INLINE unsafeToDigit #-};\
     isDigit _ = \w -> 48 <= w && w <= 57 || 65 <= w && w <= MAXu || 97 <= w && w <= MAXl;\
-    unsafeToDigit _ w = if\
-        | 48 <= w && w <= 57 -> fromIntegral w - 48;\
-        | 65 <= w && w <= 90 -> fromIntegral w - 55;\
-        | otherwise          -> fromIntegral w - 87
+    unsafeToDigit _ w = if 48 <= w && w <= 57;\
+                        then fromIntegral w - 48;\
+                        else if 65 <= w && w <= 90;\
+                             then fromIntegral w - 55;\
+                             else fromIntegral w - 87
 
 defineBaseOver10(11, 65, 97)
 defineBaseOver10(12, 66, 98)
