@@ -15,6 +15,8 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Data.ByteString.Read
+                       Data.ByteString.Read.Class
+                       Data.ByteString.Read.Fractional
   build-depends:       base         >=4.6  && <4.8
                      , bytestring   >=0.10 && <0.11
                      , types-compat >=0.1  && <0.2
