@@ -47,60 +47,51 @@ plus = 43
 {-# INLINE plus #-}
 
 
-class (Fractional a, Num (FractionWord a), Ord (FractionWord a)) => EffectiveDigit a where
+class (Fractional a, Num (Fraction a), Ord (Fraction a)) => EffectiveDigit a where
     -- | data type to store fractional part of floating
-    data FractionWord a
+    data Fraction a
 
     -- | maximum value of fractional part.
+    --
+    -- Nothing if arbitrary-precision.
     -- 
     -- @
     -- Just $ fromIntegral (floatRadix t) ^ floatDigits t
     -- @
-    maxValue :: proxy a -> Maybe (FractionWord a)
+    maxValue :: proxy a -> Maybe (Fraction a)
 
-    -- | unwrap to floating
-    unFractionWord :: FractionWord a -> a
-
-    -- | unwrap to word
-    fractionWordAsInt :: FractionWord a -> Int
+    -- | lifted fromIntegral
+    fromFraction :: Num b => Fraction a -> b
 
 instance EffectiveDigit Float where
-    newtype FractionWord Float = WordFloat Word32
+    newtype Fraction Float = FractionFloat Word32
         deriving(Eq, Ord, Num)
 
     maxValue _ = let t = 0 :: Float in Just $ fromIntegral (floatRadix t) ^ floatDigits t
-
-    unFractionWord (WordFloat a) = fromIntegral a
-    fractionWordAsInt (WordFloat a) = fromIntegral a
+    fromFraction (FractionFloat a) = fromIntegral a
 
     {-# INLINE maxValue #-}
-    {-# INLINE unFractionWord #-}
-    {-# INLINE fractionWordAsInt #-}
+    {-# INLINE fromFraction #-}
 
 instance EffectiveDigit Double where
-    newtype FractionWord Double = WordDouble Word64
+    newtype Fraction Double = FractionDouble Word64
         deriving(Eq, Ord, Num)
 
     maxValue _ = let t = 0 :: Double in Just $ fromIntegral (floatRadix t) ^ floatDigits t
-
-    unFractionWord (WordDouble a) = fromIntegral a
-    fractionWordAsInt (WordDouble a) = fromIntegral a
+    fromFraction (FractionDouble a) = fromIntegral a
 
     {-# INLINE maxValue #-}
-    {-# INLINE unFractionWord #-}
-    {-# INLINE fractionWordAsInt #-}
+    {-# INLINE fromFraction #-}
 
 instance EffectiveDigit Rational where
-    newtype FractionWord Rational = WordRational Integer
+    newtype Fraction Rational = WordRational Integer
         deriving(Eq, Ord, Num)
 
     maxValue _ = Nothing
-    unFractionWord (WordRational a) = fromIntegral a
-    fractionWordAsInt (WordRational a) = fromIntegral a
+    fromFraction (WordRational a) = fromIntegral a
 
     {-# INLINE maxValue #-}
-    {-# INLINE unFractionWord #-}
-    {-# INLINE fractionWordAsInt #-}
+    {-# INLINE fromFraction #-}
 
 class KnownNat n => Base n where
     -- | check input Word8 is digit charactor or not.
@@ -165,8 +156,8 @@ defineBaseOver10(35, 89, 121)
 defineBaseOver10(36, 90, 122)
 
 
-integral :: forall proxy n r. (Base n, EffectiveDigit r, Ord (FractionWord r), Num (FractionWord r))
-         => proxy n -> ByteString -> (FractionWord r, Int, Int, ByteString)
+integral :: forall proxy n r. (Base n, EffectiveDigit r, Ord (Fraction r), Num (Fraction r))
+         => proxy n -> ByteString -> (Fraction r, Int, Int, ByteString)
 integral pn = loop 0 0 0
   where
     pr :: Proxy r
@@ -177,13 +168,13 @@ integral pn = loop 0 0 0
         | not (isDigit pn (unsafeHead s))  = (i, d, ad, s)
         | maybe False (i >=) (maxValue pr) = loop i d (ad + 1) (unsafeTail s)
         | otherwise                        = loop
-            (i * fromIntegral (natVal pn) + (fromIntegral $ unsafeToDigit pn (unsafeHead s) :: FractionWord r))
+            (i * fromIntegral (natVal pn) + (fromIntegral $ unsafeToDigit pn (unsafeHead s) :: Fraction r))
             (d+1) ad (unsafeTail s)
 {-# INLINABLE integral #-}
 
 toFractional :: (Base b, EffectiveDigit r, Fractional r)
-             => proxy b -> FractionWord r -> FractionWord r -> Int -> Int -> r
-toFractional p q r du d = unFractionWord q * base ^ du + unFractionWord r / base ^ d
+             => proxy b -> Fraction r -> Fraction r -> Int -> Int -> r
+toFractional p q r du d = fromFraction q * base ^ du + fromFraction r / base ^ d
   where
     base = fromIntegral (natVal p)
 {-# INLINABLE toFractional #-}
@@ -203,17 +194,17 @@ toFractional p q r du d = unFractionWord q * base ^ du + unFractionWord r / base
 floating' :: (Base b, EffectiveDigit r) => proxy b -> ByteString -> Maybe (r, ByteString)
 floating' pn s = case integral pn s of
     (_, 0, _,   _) -> Nothing
-    (q, _, d, "") -> Just (unFractionWord q * fromIntegral (natVal pn) ^ d, "")
+    (q, _, d, "") -> Just (fromFraction q * fromIntegral (natVal pn) ^ d, "")
     (q, _, d, s1)
-        | unsafeHead s1 /= dot -> Just (unFractionWord q, s1)
+        | unsafeHead s1 /= dot -> Just (fromFraction q, s1)
         | otherwise -> case integral pn (unsafeTail s1) of
-            (_, 0,  _, _)  -> Just (unFractionWord q, s1)
+            (_, 0,  _, _)  -> Just (fromFraction q, s1)
             (r, d', _, s2) -> Just (toFractional pn q r d d', s2)
   where
     dot = 46
 {-# INLINABLE floating' #-}
 
-exponential :: forall proxy r. (EffectiveDigit r, Ord (FractionWord r), Num (FractionWord r))
+exponential :: forall proxy r. (EffectiveDigit r, Ord (Fraction r), Num (Fraction r))
             => proxy r -> ByteString -> (Int, ByteString)
 exponential _ s0
     | S.null s0           = (0, s0)
@@ -228,9 +219,9 @@ exponential _ s0
         | unsafeHead s1 == minus = let (e, s) = expPart $ unsafeTail s1 in (-e, s)
         | otherwise              = expPart s1
 
-    expPart s2 = case integral (Proxy :: Proxy 10) s2 :: (FractionWord r, Int, Int, ByteString) of
+    expPart s2 = case integral (Proxy :: Proxy 10) s2 :: (Fraction r, Int, Int, ByteString) of
         (_, 0, _, _) -> (0, s0)
-        (e, _, _, s) -> (fractionWordAsInt e, s)
+        (e, _, _, s) -> (fromFraction e, s)
 {-# INLINABLE exponential #-}
 
 setExpPart :: Fractional f => Int -> f -> f
