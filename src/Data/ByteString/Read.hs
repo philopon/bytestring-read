@@ -185,11 +185,11 @@ toFractional p q r du d = fromFraction q * base ^ du + fromFraction r / base ^ d
 --
 -- * floating(0.1, 12224.3543)
 --
--- >>> floating' (Proxy :: Proxy 36) "12z"
+-- >>> floating' (Proxy :: Proxy 36) "12z" :: Maybe (Double, ByteString)
 -- Just (1403.0,"")
--- >>> floating' (Proxy :: Proxy 2) "1012"
+-- >>> floating' (Proxy :: Proxy 2) "1012" :: Maybe (Double, ByteString)
 -- Just (5.0,"2")
--- >>> floating' (Proxy :: Proxy 10) "a12"
+-- >>> floating' (Proxy :: Proxy 10) "a12" :: Maybe (Double, ByteString)
 -- Nothing
 floating' :: (Base b, EffectiveDigit r) => proxy b -> ByteString -> Maybe (r, ByteString)
 floating' pn s = case integral pn s of
@@ -239,13 +239,13 @@ setExpPart e f
 -- * floating(0.1, 12224.3543)
 -- * exponential (e1, E+2, e-123) (optional)
 --
--- >>> floating10 "12.5"
+-- >>> floating10 "12.5" :: Maybe (Double, ByteString)
 -- Just (12.5,"")
--- >>> floating10 "124.1e12"
+-- >>> floating10 "124.1e12" :: Maybe (Double, ByteString)
 -- Just (1.241e14,"")
--- >>> floating10 "12.5e-3"
+-- >>> floating10 "12.5e-3" :: Maybe (Double, ByteString)
 -- Just (1.25e-2,"")
--- >>> floating10 "3.11e+3"
+-- >>> floating10 "3.11e+3" :: Maybe (Double, ByteString)
 -- Just (3110.0,"")
 floating10 :: forall r. EffectiveDigit r => ByteString -> Maybe (r, ByteString)
 floating10 s = floating' (Proxy :: Proxy 10) s >>= \(f, s') ->
@@ -261,13 +261,13 @@ floating10 s = floating' (Proxy :: Proxy 10) s >>= \(f, s') ->
 -- * floating(0.1, 12224.3543)
 -- * exponential (e1, E+2, e-123) (10-radixed only, optional)
 --
--- >>> floating "12.4"
+-- >>> floating "12.4" :: Maybe (Double, ByteString)
 -- Just (12.4,"")
--- >>> floating "1.23e12"
+-- >>> floating "1.23e12" :: Maybe (Double, ByteString)
 -- Just (1.23e12,"")
--- >>> floating "0o0.4"
+-- >>> floating "0o0.4" :: Maybe (Double, ByteString)
 -- Just (0.5,"")
--- >>> floating "0x3f.12"
+-- >>> floating "0x3f.12" :: Maybe (Double, ByteString)
 -- Just (63.0703125,"")
 floating :: EffectiveDigit r => ByteString -> Maybe (r, ByteString)
 floating s0
