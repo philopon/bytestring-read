@@ -1,7 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE Rank2Types #-}
-
 module Data.ByteString.Read
     ( -- * fractional
       ReadFractional
@@ -11,11 +7,7 @@ module Data.ByteString.Read
     , signed
 
       -- * DEPRECATED
-    , floating
-    , EffectiveDigit
-    , Base
-    , floating10
-    , floating'
+    , module Data.ByteString.Read.DEPRECATED
     ) where
 
 import Control.Applicative
@@ -27,6 +19,7 @@ import qualified Data.ByteString as S
 
 import Data.ByteString.Read.Class
 import Data.ByteString.Read.Fractional
+import Data.ByteString.Read.DEPRECATED
 
 -- $setup
 -- >>> :set -XDataKinds -XOverloadedStrings
@@ -52,21 +45,3 @@ signed f s
   where
     minus = 45
     plus  = 43
-
-{-# DEPRECATED EffectiveDigit "use ReadFractional" #-}
-type EffectiveDigit = ReadFractional
-
-{-# DEPRECATED floating "use fractional" #-}
-floating :: EffectiveDigit r => ByteString -> Maybe (r, ByteString)
-floating = fractional
-
-{-# DEPRECATED Base "use Radix" #-}
-type Base = Radix
-
-{-# DEPRECATED floating10 "use fractional10" #-}
-floating10 :: forall r. EffectiveDigit r => ByteString -> Maybe (r, ByteString) 
-floating10 = fractional10
-
-{-# DEPRECATED floating' "use floating'" #-}
-floating' :: (Base b, EffectiveDigit r) => proxy b -> ByteString -> Maybe (r, ByteString) 
-floating' = fractional'
