@@ -1,6 +1,6 @@
 name:                bytestring-read
-version:             0.1.0
-synopsis:            fast ByteString to Double converting library
+version:             0.2.0
+synopsis:            fast ByteString to number converting library
 description:         benchmark: <http://philopon.github.io/bytestring-read/bench.html>
 license:             MIT
 license-file:        LICENSE
@@ -15,6 +15,10 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Data.ByteString.Read
+                       Data.ByteString.Read.Class
+                       Data.ByteString.Read.Fractional
+                       Data.ByteString.Read.Integral
+                       Data.ByteString.Read.DEPRECATED
   build-depends:       base         >=4.6  && <4.8
                      , bytestring   >=0.10 && <0.11
                      , types-compat >=0.1  && <0.2

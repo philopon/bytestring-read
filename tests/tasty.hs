@@ -99,59 +99,66 @@ instance Arbitrary Float10Exp where
 
 main :: IO ()
 main = defaultMain $ testGroup "read . show == id"
-    [ testProperty "showEFloat" $ \d ->
-        let Just (d', "") = signed floating . S.pack $ showEFloat Nothing d ""
-        in (d :: Double) =~~ d'
+    [ testGroup "Integral"
+        [ testProperty "Int" $ \i ->
+            let Just (i', "") = signed integral . S.pack $ show i
+            in (i :: Int) == i'
+        ]
+    , testGroup "Fractional"
+        [ testProperty "showEFloat" $ \d ->
+            let Just (d', "") = signed fractional . S.pack $ showEFloat Nothing d ""
+            in (d :: Double) =~~ d'
 
-    , testProperty "showFFloat" $ \d ->
-        let Just (d', "") = signed floating . S.pack $ showFFloat Nothing  d ""
-        in (d :: Double) =~~ d'
+        , testProperty "showFFloat" $ \d ->
+            let Just (d', "") = signed fractional . S.pack $ showFFloat Nothing  d ""
+            in (d :: Double) =~~ d'
 
-    , testProperty "showGFloat" $ \d ->
-        let Just (d', "") = signed floating . S.pack $ showGFloat Nothing  d ""
-        in (d :: Double) =~~ d'
+        , testProperty "showGFloat" $ \d ->
+            let Just (d', "") = signed fractional . S.pack $ showGFloat Nothing  d ""
+            in (d :: Double) =~~ d'
 
-    , testProperty "showHex" $ \i ->
-        let Just (i', "") = signed floating . (S.append "0x") . S.pack $ showHex (abs i) ""
-        in fromIntegral (abs i :: Int) =~~ i'
+        , testProperty "showHex" $ \i ->
+            let Just (i', "") = signed fractional . (S.append "0x") . S.pack $ showHex (abs i) ""
+            in fromIntegral (abs i :: Int) =~~ i'
 
-    , testProperty "showOct" $ \i ->
-        let Just (i', "") = signed floating . (S.append "0o") . S.pack $ showOct (abs i) ""
-        in fromIntegral (abs i :: Int) =~~ i'
+        , testProperty "showOct" $ \i ->
+            let Just (i', "") = signed fractional . (S.append "0o") . S.pack $ showOct (abs i) ""
+            in fromIntegral (abs i :: Int) =~~ i'
 
-    , testProperty "Word8" $ \(Word8 d) ->
-        let Just (d', "") = signed floating (S.pack d)
-        in d' =~~ (read d :: Double)
+        , testProperty "Word8" $ \(Word8 d) ->
+            let Just (d', "") = signed fractional (S.pack d)
+            in d' =~~ (read d :: Double)
 
-    , testProperty "Word10" $ \(Word10 d) ->
-        let Just (d', "") = signed floating (S.pack d)
-        in d' =~~ (read d :: Double)
+        , testProperty "Word10" $ \(Word10 d) ->
+            let Just (d', "") = signed fractional (S.pack d)
+            in d' =~~ (read d :: Double)
 
-    , testProperty "Word16" $ \(Word16 d) ->
-        let Just (d', "") = signed floating (S.pack d)
-        in d' =~~ (read d :: Double)
+        , testProperty "Word16" $ \(Word16 d) ->
+            let Just (d', "") = signed fractional (S.pack d)
+            in d' =~~ (read d :: Double)
 
-    , testProperty "Int8" $ \(Int8 d) ->
-        let Just (d', "") = signed floating (S.pack d)
-        in d' =~~ (read d :: Double)
+        , testProperty "Int8" $ \(Int8 d) ->
+            let Just (d', "") = signed fractional (S.pack d)
+            in d' =~~ (read d :: Double)
 
-    , testProperty "Int10" $ \(Int10 d) ->
-        let Just (d', "") = signed floating (S.pack d)
-        in d' =~~ (read d :: Double)
+        , testProperty "Int10" $ \(Int10 d) ->
+            let Just (d', "") = signed fractional (S.pack d)
+            in d' =~~ (read d :: Double)
 
-    , testProperty "Int16" $ \(Int16 d) ->
-        let Just (d', "") = signed floating (S.pack d)
-        in d' =~~ (read d :: Double)
+        , testProperty "Int16" $ \(Int16 d) ->
+            let Just (d', "") = signed fractional (S.pack d)
+            in d' =~~ (read d :: Double)
 
-    , testProperty "Float10" $ \(Float10 d) ->
-        let Just (d', "") = signed floating (S.pack d)
-        in d' =~~ (read d :: Double)
+        , testProperty "Float10" $ \(Float10 d) ->
+            let Just (d', "") = signed fractional (S.pack d)
+            in d' =~~ (read d :: Double)
 
-    , testProperty "SmallFloat10" $ \(SmallFloat10 d) ->
-        let Just (d', "") = signed floating (S.pack d)
-        in d' =~~ (read d :: Double)
+        , testProperty "SmallFloat10" $ \(SmallFloat10 d) ->
+            let Just (d', "") = signed fractional (S.pack d)
+            in d' =~~ (read d :: Double)
 
-    , testProperty "Float10Exp" $ \(Float10Exp d) ->
-        let Just (d', "") = signed floating (S.pack d)
-        in d' =~~ (read d :: Double)
+        , testProperty "Float10Exp" $ \(Float10Exp d) ->
+            let Just (d', "") = signed fractional (S.pack d)
+            in d' =~~ (read d :: Double)
+        ]
      ]

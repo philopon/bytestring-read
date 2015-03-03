@@ -28,7 +28,7 @@ checkConsumed (d, "") = d
 checkConsumed _       = error "not consumed"
 
 bytestringRead :: ByteString -> Double
-bytestringRead = maybe (error "parse error") checkConsumed . R.signed R.floating
+bytestringRead = maybe (error "parse error") checkConsumed . R.signed R.fractional
 
 text :: ByteString -> Double
 text = either (const $ error "parse error") checkConsumed . T.signed T.double . T.decodeUtf8
