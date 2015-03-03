@@ -17,6 +17,7 @@ library
   exposed-modules:     Data.ByteString.Read
                        Data.ByteString.Read.Class
                        Data.ByteString.Read.Fractional
+                       Data.ByteString.Read.Integral
                        Data.ByteString.Read.DEPRECATED
   build-depends:       base         >=4.6  && <4.8
                      , bytestring   >=0.10 && <0.11

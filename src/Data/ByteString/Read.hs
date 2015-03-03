@@ -3,6 +3,11 @@ module Data.ByteString.Read
       ReadFractional
     , fractional
     , double
+
+      -- * integral
+    , integral
+    , int
+
       -- * common
     , signed
 
@@ -18,6 +23,7 @@ import Data.ByteString.Unsafe
 import qualified Data.ByteString as S
 
 import Data.ByteString.Read.Class
+import Data.ByteString.Read.Integral
 import Data.ByteString.Read.Fractional
 import Data.ByteString.Read.DEPRECATED
 

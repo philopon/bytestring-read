@@ -30,9 +30,9 @@ import Data.ByteString.Read.Class
 -- $setup
 -- >>> :set -XDataKinds -XOverloadedStrings
 
-integral' :: forall proxy n r. (Radix n, ReadFractional r, Ord (Fraction r), Num (Fraction r))
-          => proxy n -> ByteString -> (Fraction r, Int, Int, ByteString)
-integral' pn = loop 0 0 0
+integral :: forall proxy n r. (Radix n, ReadFractional r, Ord (Fraction r), Num (Fraction r))
+         => proxy n -> ByteString -> (Fraction r, Int, Int, ByteString)
+integral pn = loop 0 0 0
   where
     pr :: Proxy r
     pr = Proxy
@@ -44,7 +44,7 @@ integral' pn = loop 0 0 0
         | otherwise                        = loop
             (i * fromIntegral (natVal pn) + (fromIntegral $ unsafeToDigit pn (unsafeHead s) :: Fraction r))
             (d+1) ad (unsafeTail s)
-{-# INLINABLE integral' #-}
+{-# INLINABLE integral #-}
 
 toFractional :: (Radix b, ReadFractional r, Fractional r)
              => proxy b -> Fraction r -> Fraction r -> Int -> Int -> r
@@ -66,21 +66,20 @@ toFractional p q r du d = fromFraction q * radix ^ du + fromFraction r / radix ^
 -- >>> fractional' (Proxy :: Proxy 10) "a12" :: Maybe (Double, ByteString)
 -- Nothing
 fractional' :: (Radix b, ReadFractional r) => proxy b -> ByteString -> Maybe (r, ByteString)
-fractional' pn s = case integral' pn s of
+fractional' pn s = case integral pn s of
     (_, 0, _,   _) -> Nothing
     (q, _, d, "") -> Just (fromFraction q * fromIntegral (natVal pn) ^ d, "")
     (q, _, d, s1)
         | unsafeHead s1 /= dot -> Just (fromFraction q, s1)
-        | otherwise -> case integral' pn (unsafeTail s1) of
+        | otherwise -> case integral pn (unsafeTail s1) of
             (_, 0,  _, _)  -> Just (fromFraction q, s1)
             (r, d', _, s2) -> Just (toFractional pn q r d d', s2)
   where
     dot = 46
 {-# INLINABLE fractional' #-}
 
-exponential :: forall proxy r. (ReadFractional r, Ord (Fraction r), Num (Fraction r))
-            => proxy r -> ByteString -> (Int, ByteString)
-exponential _ s0
+exponential :: ByteString -> (Int, ByteString)
+exponential s0
     | S.null s0           = (0, s0)
     | isE (unsafeHead s0) = sign (unsafeTail s0)
     | otherwise           = (0, s0)
@@ -96,7 +95,7 @@ exponential _ s0
         | unsafeHead s1 == minus = let (e, s) = expPart $ unsafeTail s1 in (-e, s)
         | otherwise              = expPart s1
 
-    expPart s2 = case integral' (Proxy :: Proxy 10) s2 :: (Fraction r, Int, Int, ByteString) of
+    expPart s2 = case integral (Proxy :: Proxy 10) s2 :: (Fraction Double, Int, Int, ByteString) of
         (_, 0, _, _) -> (0, s0)
         (e, _, _, s) -> (fromFraction e, s)
 {-# INLINABLE exponential #-}
@@ -124,9 +123,9 @@ setExpPart e f
 -- Just (1.25e-2,"")
 -- >>> fractional10 "3.11e+3" :: Maybe (Double, ByteString)
 -- Just (3110.0,"")
-fractional10 :: forall r. ReadFractional r => ByteString -> Maybe (r, ByteString)
+fractional10 :: ReadFractional r => ByteString -> Maybe (r, ByteString)
 fractional10 s = fractional' (Proxy :: Proxy 10) s >>= \(f, s') ->
-    let (e, s'') = exponential (Proxy :: Proxy r) s'
+    let (e, s'') = exponential s'
     in Just (setExpPart e f, s'')
 {-# INLINABLE fractional10 #-}
 
