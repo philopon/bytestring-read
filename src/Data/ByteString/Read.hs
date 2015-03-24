@@ -15,7 +15,6 @@ module Data.ByteString.Read
     , module Data.ByteString.Read.DEPRECATED
     ) where
 
-import Control.Applicative
 import Control.Arrow
 
 import Data.ByteString(ByteString)
@@ -45,7 +44,7 @@ import Data.ByteString.Read.DEPRECATED
 signed :: Num r => (ByteString -> Maybe (r, ByteString)) -> ByteString -> Maybe (r, ByteString)
 signed f s
     | S.null s = Nothing
-    | unsafeHead s == minus = first negate <$> f (unsafeTail s)
+    | unsafeHead s == minus = first negate `fmap` f (unsafeTail s)
     | unsafeHead s == plus  = f (unsafeTail s)
     | otherwise = f s
   where
