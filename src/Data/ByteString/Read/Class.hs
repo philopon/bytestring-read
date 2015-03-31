@@ -8,10 +8,14 @@
 module Data.ByteString.Read.Class
     ( ReadFractional(..)
     , Radix(..)
+    , Source(..)
     ) where
 
 import Data.Word
 import GHC.TypeLits.Compat
+import qualified Data.ByteString as S
+import Data.ByteString.Unsafe
+import qualified Data.ByteString.Lazy as L
 
 class (Fractional a, Num (Fraction a), Ord (Fraction a)) => ReadFractional a where
     -- | data type to store fractional part of floating
@@ -121,3 +125,27 @@ defineRadixOver10(33, 87, 119)
 defineRadixOver10(34, 88, 120)
 defineRadixOver10(35, 89, 121)
 defineRadixOver10(36, 90, 122)
+
+class Source a where
+    null  :: a -> Bool
+    empty :: a
+    head  :: a -> Word8
+    tail  :: a -> a
+
+instance Source S.ByteString where
+    null  = S.null
+    empty = S.empty
+    head  = unsafeHead
+    tail  = unsafeTail
+    {-# INLINE null #-}
+    {-# INLINE head #-}
+    {-# INLINE tail #-}
+
+instance Source L.ByteString where
+    null  = L.null
+    empty = L.empty
+    head  = L.head
+    tail  = L.tail
+    {-# INLINE null #-}
+    {-# INLINE head #-}
+    {-# INLINE tail #-}
