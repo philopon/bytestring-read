@@ -93,11 +93,11 @@ instance Radix RADIX where;\
     {-# INLINE isDigit #-};\
     {-# INLINE unsafeToDigit #-};\
     isDigit _ = \w -> 48 <= w && w <= 57 || 65 <= w && w <= MAXu || 97 <= w && w <= MAXl;\
-    unsafeToDigit _ w = if 48 <= w && w <= 57;\
-                        then fromIntegral w - 48;\
-                        else if 65 <= w && w <= 90;\
-                             then fromIntegral w - 55;\
-                             else fromIntegral w - 87
+    unsafeToDigit _ w = if w <= 57;\
+                        then w - 48;\
+                        else if w <= 90;\
+                             then w - 55;\
+                             else w - 87
 
 defineRadixOver10(11, 65, 97)
 defineRadixOver10(12, 66, 98)
