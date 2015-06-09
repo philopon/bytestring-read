@@ -12,6 +12,6 @@ before_install:
   - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
 
 install:
-  - cabal install --only-dependencies --enable-tests --enable-benchmarks
+  - cabal install --only-dependencies --enable-tests --enable-benchmarks --max-backjumps=-1
 
 after_success: bash ./.continuous-benchmark.sh
