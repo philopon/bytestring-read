@@ -33,8 +33,8 @@ benchmark bench
                      , bytestring-read
                      , bytestring
                      , text
-                     , bytestring-lexing >=0.4  && <0.5
-                     , criterion         >=1.0  && <1.2
+                     , bytestring-lexing >=0.4  && <0.6
+                     , criterion         >=0.8  && <1.2
                      , scientific
                      , attoparsec
   ghc-options:         -Wall -O2
