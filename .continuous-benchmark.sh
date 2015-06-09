@@ -4,6 +4,9 @@ set -eu
 
 test "$GHCVER" = "$BENCH_TARGET"
 
+git config --global user.name "travis"
+git config --global user.email "travis@example.com"
+
 cabal configure --enable-benchmarks
 cabal build bench
 git clone -b gh-pages git@github.com:philopon/bytestring-read.git
