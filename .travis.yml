@@ -11,7 +11,10 @@ before_install:
   - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER
   - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
 
-install:
-  - cabal install --only-dependencies --enable-tests --enable-benchmarks --max-backjumps=-1
+  - export BENCH_TARGET=7.10.1
 
-after_success: bash ./.continuous-benchmark.sh
+install:
+  - bash ./.travis-install.sh
+
+after_success:
+  - bash ./.continuous-benchmark.sh

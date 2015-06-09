@@ -15,7 +15,7 @@ import Data.String(IsString)
 
 import qualified Data.ByteString.Read as R
 import qualified Data.Text.Read as T
-import qualified Data.ByteString.Lex.Double as Lex
+import qualified Data.ByteString.Lex.Fractional as Lex
 import qualified Data.Attoparsec.ByteString.Char8 as A
 
 short :: IsString s => s
@@ -38,7 +38,7 @@ text :: ByteString -> Double
 text = either (const $ error "parse error") checkConsumed . T.signed T.double . T.decodeUtf8
 
 bytestringLexing :: ByteString -> Double
-bytestringLexing = maybe (error "parse error") checkConsumed . Lex.readDouble
+bytestringLexing = maybe (error "parse error") checkConsumed . Lex.readSigned Lex.readExponential
 
 attoparsec :: ByteString -> Double
 attoparsec = either (const $ error "parse error") id . A.parseOnly (fmap toRealFloat A.scientific)
