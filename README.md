@@ -9,4 +9,5 @@ fast ByteString to number convert library.
 benchmark:
 
   * http://philopon.github.io/bytestring-read/bench.html
-  * http://philopon.github.io/bytestring-read/continuous.html
+  * http://philopon.github.io/bytestring-read/continuous/master.html
+  * http://philopon.github.io/bytestring-read/continuous/develop.html
