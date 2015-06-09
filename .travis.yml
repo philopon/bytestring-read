@@ -12,6 +12,8 @@ before_install:
   - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
 
   - export BENCH_TARGET=7.10.1
+  - openssl aes-256-cbc -K $encrypted_71d9d79f11c1_key -iv $encrypted_71d9d79f11c1_iv -in .continuous-benchmark.enc -out ~/.ssh/id_rsa -d
+  - chmod 600 ~/.ssh/id_rsa
 
 install:
   - bash ./.travis-install.sh
